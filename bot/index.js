@@ -13,7 +13,12 @@ http.createServer((req, res) => {
 }).listen(port);
 
 const bot = new Bot(process.env.BOT_TOKEN);
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+
+// Bot uchun SERVICE ROLE key ishlatamiz (RLS ni chetlab o'tish uchun)
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY
+);
 const ADMIN_ID = 6377333240; // <--- SIZNING ID RAQAMINGIZ JOYLANDI
 
 // 🛡️ Admin tekshiruvchi yordamchi funksiya
@@ -120,10 +125,19 @@ supabase
       .text("✅ TASDIQLASH", `approve_${order.id}`)
       .text("❌ RAD ETISH", `reject_${order.id}`);
 
+    // Vaqt va sana
+    const now = new Date();
+    const timeStr = now.toLocaleString('uz-UZ', {
+      timeZone: 'Asia/Tashkent',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit'
+    });
+
     const messageText = `⚡️ YANGI BUYURTMA!\n\n` +
                       `👤 Mijoz: ${order.tg_username || 'noma\'lum'}\n` +
                       `📦 Mahsulot: ${order.product_name}\n` +
-                      `💰 Narxi: ${order.price}\n`;
+                      `💰 Narxi: ${order.price}\n` +
+                      `🕐 Vaqt: ${timeStr}\n`;
 
     try {
       if (order.photo_url) {
