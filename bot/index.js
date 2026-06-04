@@ -139,17 +139,27 @@ supabase
                       `💰 Narxi: ${order.price}\n` +
                       `🕐 Vaqt: ${timeStr}\n`;
 
+    console.log("🔔 Yangi buyurtma keldi:", order.id);
+
     try {
       if (order.photo_url) {
-        const response = await axios.get(order.photo_url, { responseType: 'arraybuffer' });
-        await bot.api.sendPhoto(ADMIN_ID, new InputFile(Buffer.from(response.data), `r.jpg`), {
-          caption: messageText,
-          reply_markup: keyboard,
-        });
+        try {
+          const response = await axios.get(order.photo_url, { responseType: 'arraybuffer' });
+          await bot.api.sendPhoto(ADMIN_ID, new InputFile(Buffer.from(response.data), `r.jpg`), {
+            caption: messageText,
+            reply_markup: keyboard,
+          });
+        } catch (photoError) {
+          console.error("📸 Rasm yuklashda xato, matn yuborilmoqda:", photoError.message);
+          // Rasm ishlamasa, hech bo'lmasa matnni va rasm ssilkasini yuboramiz
+          await bot.api.sendMessage(ADMIN_ID, messageText + `\n🔗 Rasm linki: ${order.photo_url}`, { reply_markup: keyboard });
+        }
       } else {
         await bot.api.sendMessage(ADMIN_ID, messageText, { reply_markup: keyboard });
       }
-    } catch (e) { console.log(e); }
+    } catch (e) { 
+      console.error("❌ Xabar yuborishda umumiy xato:", e); 
+    }
   })
   .subscribe();
 
@@ -175,4 +185,8 @@ bot.callbackQuery(/reject_(.+)/, async (ctx) => {
     await ctx.answerCallbackQuery("Rad etildi.");
 });
 
-bot.start();
+bot.start({
+  onStart: (botInfo) => {
+    console.log(`🚀 Bot ishga tushdi: @${botInfo.username}`);
+  }
+});
