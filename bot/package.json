@@ -1,0 +1,17 @@
+{
+  "name": "vitaton-bot",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "@grammyjs/conversations": "^2.1.1",
+    "@supabase/supabase-js": "^2.38.4",
+    "axios": "^1.6.0",
+    "dotenv": "^16.3.1",
+    "grammy": "^1.19.1",
+    "pg": "^8.20.0"
+  }
+}
