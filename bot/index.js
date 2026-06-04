@@ -16,6 +16,9 @@ const bot = new Bot(process.env.BOT_TOKEN);
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
 const ADMIN_ID = 6377333240; // <--- SIZNING ID RAQAMINGIZ JOYLANDI
 
+// 🛡️ Admin tekshiruvchi yordamchi funksiya
+const isAdmin = (ctx) => ctx.from?.id === ADMIN_ID;
+
 bot.use(session({ initial: () => ({}) }));
 bot.use(conversations());
 
@@ -96,6 +99,11 @@ bot.command("list", async (ctx) => {
 });
 
 bot.callbackQuery(/del_(.+)/, async (ctx) => {
+  // 🛡️ ADMIN TEKSHIRUVI
+  if (!isAdmin(ctx)) {
+    await ctx.answerCallbackQuery({ text: "⛔ Siz admin emassiz!", show_alert: true });
+    return;
+  }
   const id = ctx.match[1];
   await supabase.from('products').delete().eq('id', id);
   await ctx.editMessageText("🗑 Mahsulot o'chirildi.");
@@ -132,12 +140,22 @@ supabase
   .subscribe();
 
 bot.callbackQuery(/approve_(.+)/, async (ctx) => {
+    // 🛡️ ADMIN TEKSHIRUVI
+    if (!isAdmin(ctx)) {
+      await ctx.answerCallbackQuery({ text: "⛔ Siz admin emassiz!", show_alert: true });
+      return;
+    }
     const id = ctx.match[1];
     await supabase.from("orders").update({ status: "approved" }).eq("id", id);
     await ctx.answerCallbackQuery("Tasdiqlandi!");
 });
 
 bot.callbackQuery(/reject_(.+)/, async (ctx) => {
+    // 🛡️ ADMIN TEKSHIRUVI
+    if (!isAdmin(ctx)) {
+      await ctx.answerCallbackQuery({ text: "⛔ Siz admin emassiz!", show_alert: true });
+      return;
+    }
     const id = ctx.match[1];
     await supabase.from("orders").update({ status: "rejected" }).eq("id", id);
     await ctx.answerCallbackQuery("Rad etildi.");
