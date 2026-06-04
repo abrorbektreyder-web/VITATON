@@ -31,7 +31,7 @@ function App() {
 
   // BU YERGA O'ZINGIZNING REAL HAMYONLARINGIZNI YOZING:
   const tonAddress = "SIZNING_TON_HAMYONINGIZ_SHU_YERDA";
-  const usdtAddress = "SIZNING_USDT_TRC20_HAMYONINGIZ_SHU_YERDA";
+  const usdtAddress = "0xbd173D597b5A886BE0dA0DEa2BD2cF92453E5041";
 
   useEffect(() => {
     // Ilova sakrashini oldini olish
