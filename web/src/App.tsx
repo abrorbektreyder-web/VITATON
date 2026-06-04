@@ -28,6 +28,12 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const showToast = (message: string) => {
+    setToast(message);
+    setTimeout(() => setToast(null), 2500);
+  };
 
   // BU YERGA O'ZINGIZNING REAL HAMYONLARINGIZNI YOZING:
   const tonAddress = "SIZNING_TON_HAMYONINGIZ_SHU_YERDA";
@@ -139,7 +145,7 @@ function App() {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    alert('Nusxalandi!');
+    showToast('✅ Nusxalandi!');
   };
 
   if (isLoading) {
@@ -152,6 +158,12 @@ function App() {
 
   return (
     <div className="min-h-screen bg-[#020617] text-slate-100 font-sans selection:bg-cyan-500/30 overflow-x-hidden pb-12">
+      {/* Toast Notification */}
+      {toast && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[999] bg-slate-800 border border-green-500/40 text-green-400 font-bold px-6 py-3 rounded-2xl shadow-2xl text-sm animate-in fade-in slide-in-from-top-4 duration-300">
+          {toast}
+        </div>
+      )}
       {/* Background Orbs */}
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-gradient-to-b from-cyan-500/10 via-blue-500/5 to-transparent pointer-events-none blur-3xl opacity-50" />
       
@@ -261,11 +273,12 @@ function App() {
 
             {isSuccess ? (
               <div className="py-12 text-center animate-in zoom-in-95 duration-500">
-                <div className="w-24 h-24 bg-green-500/20 border border-green-500/30 rounded-full flex items-center justify-center mx-auto mb-6 box-glow-green">
+                <div className="w-24 h-24 bg-green-500/20 border border-green-500/30 rounded-full flex items-center justify-center mx-auto mb-6">
                   <CheckCircle2 className="w-12 h-12 text-green-400" />
                 </div>
-                <h3 className="text-3xl font-black mb-3">Raxmat!</h3>
-                <p className="text-slate-400 mb-8">Buyurtmangiz tasdiqlash uchun yuborildi.</p>
+                <h3 className="text-3xl font-black mb-3 text-green-400">✅ Tasdiqlandi!</h3>
+                <p className="text-slate-300 text-lg font-bold mb-2">To'lovingiz qabul qilindi.</p>
+                <p className="text-slate-500 text-sm">Tez orada admin siz bilan bog'lanadi.</p>
               </div>
             ) : (
               <div className="space-y-8">
