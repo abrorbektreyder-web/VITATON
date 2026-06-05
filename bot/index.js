@@ -31,7 +31,7 @@ bot.use(conversations());
  * 🛠 ADMIN: MAHSULOT QO'SHISH (CONVERSATION)
  */
 async function addProduct(conversation, ctx) {
-  if (ctx.from.id.toString() !== ADMIN_ID) return;
+  if (ctx.from.id.toString() !== String(ADMIN_ID)) return;
 
   await ctx.reply("📸 Mahsulot rasmini yuboring:");
   const photoCtx = await conversation.waitFor("message:photo");
@@ -56,7 +56,7 @@ async function addProduct(conversation, ctx) {
 
   // 2. Supabase Storage-ga yuklash
   const { data: uploadData, error: uploadError } = await supabase.storage
-    .from('receipts') // receipts bucket-ini ishlatamiz (yoki yangi ochish mumkin)
+    .from('receipts')
     .upload(`products/${fileName}`, response.data, { contentType: 'image/jpeg' });
 
   if (uploadError) return ctx.reply("❌ Rasm yuklashda xato: " + uploadError.message);
@@ -73,45 +73,155 @@ async function addProduct(conversation, ctx) {
   await ctx.reply("✅ Mahsulot muvaffaqiyatli qo'shildi!");
 }
 
+/**
+ * 🖼 ADMIN: MAHSULOT RASMINI ALMASHTIRISH (CONVERSATION)
+ */
+async function updateProductImage(conversation, ctx) {
+  if (!isAdmin(ctx)) return;
+
+  // 1. Mahsulotlar ro'yxatini olish
+  const { data: products, error } = await supabase.from('products').select('*').order('created_at', { ascending: true });
+
+  if (error || !products || products.length === 0) {
+    await ctx.reply("❌ Mahsulotlar topilmadi.");
+    return;
+  }
+
+  // 2. Inline keyboard yaratish (har bir mahsulot uchun tugma)
+  const kb = new InlineKeyboard();
+  for (const p of products) {
+    kb.text(`📦 ${p.name} — ${p.price}`, `pick_${p.id}`).row();
+  }
+  kb.text("❌ Bekor qilish", "cancel_update");
+
+  await ctx.reply("🖼 Qaysi mahsulot rasmini almashtirasiz?\nTanlang:", { reply_markup: kb });
+
+  // 3. Foydalanuvchi tugmani bosishini kutish
+  const callbackCtx = await conversation.waitFor("callback_query");
+  await callbackCtx.answerCallbackQuery();
+
+  const data = callbackCtx.callbackQuery.data;
+
+  if (data === "cancel_update") {
+    await ctx.reply("❌ Bekor qilindi.");
+    return;
+  }
+
+  if (!data.startsWith("pick_")) {
+    await ctx.reply("Noto'g'ri tanlov.");
+    return;
+  }
+
+  const productId = data.replace("pick_", "");
+  const selectedProduct = products.find(p => String(p.id) === productId);
+
+  if (!selectedProduct) {
+    await ctx.reply("❌ Mahsulot topilmadi.");
+    return;
+  }
+
+  await ctx.reply(`✅ "${selectedProduct.name}" tanlandi!\n\n📸 Endi yangi rasmni yuboring:`);
+
+  // 4. Yangi rasmni kutish
+  const photoCtx = await conversation.waitFor("message:photo");
+  const file = await photoCtx.getFile();
+  const fileUrl = `https://api.telegram.org/file/bot${process.env.BOT_TOKEN}/${file.file_path}`;
+
+  await ctx.reply("⏳ Rasm yuklanmoqda...");
+
+  // 5. Rasmni Supabase storage-ga yuklash
+  const response = await axios.get(fileUrl, { responseType: 'arraybuffer' });
+  const fileName = `prod_update_${Date.now()}.jpg`;
+
+  const { error: uploadError } = await supabase.storage
+    .from('receipts')
+    .upload(`products/${fileName}`, response.data, { contentType: 'image/jpeg', upsert: true });
+
+  if (uploadError) {
+    await ctx.reply("❌ Rasm yuklashda xato: " + uploadError.message);
+    return;
+  }
+
+  const { data: { publicUrl } } = supabase.storage.from('receipts').getPublicUrl(`products/${fileName}`);
+
+  // 6. Bazada image_url ni yangilash
+  const { error: dbError } = await supabase
+    .from('products')
+    .update({ image_url: publicUrl })
+    .eq('id', productId);
+
+  if (dbError) {
+    await ctx.reply("❌ Bazani yangilashda xato: " + dbError.message);
+    return;
+  }
+
+  await ctx.reply(
+    `✅ "${selectedProduct.name}" mahsulotining rasmi muvaffaqiyatli almashtirildi!\n\n` +
+    `🌐 WebApp'ni yangilang — yangi rasm ko'rinadi.`
+  );
+}
+
 bot.use(createConversation(addProduct));
+bot.use(createConversation(updateProductImage));
 
 // 🚀 BUYRUQLAR
 bot.command("start", (ctx) => {
   if (ctx.from.id === ADMIN_ID) {
-    ctx.reply("Xush kelibsiz, Admin! Mahsulot qo'shish uchun /add buyrug'idan foydalaning.");
+    ctx.reply(
+      "👋 Xush kelibsiz, Admin!\n\n" +
+      "📋 Mavjud buyruqlar:\n" +
+      "/add — Yangi mahsulot qo'shish\n" +
+      "/rasm — Mahsulot rasmini almashtirish ✅\n" +
+      "/list — Mahsulotlar ro'yxati\n"
+    );
   } else {
     ctx.reply("Xush kelibsiz! Marhamat, do'konimizdan mahsulot tanlang.");
   }
 });
 
 bot.command("add", async (ctx) => {
-  if (ctx.from.id.toString() === ADMIN_ID) {
+  if (ctx.from.id === ADMIN_ID) {
     await ctx.conversation.enter("addProduct");
   } else {
     await ctx.reply("Siz admin emassiz!");
   }
 });
 
+// 🖼 YANGI: Rasm almashtirish buyrug'i
+bot.command("rasm", async (ctx) => {
+  if (ctx.from.id === ADMIN_ID) {
+    await ctx.conversation.enter("updateProductImage");
+  } else {
+    await ctx.reply("Siz admin emassiz!");
+  }
+});
+
 bot.command("list", async (ctx) => {
-  if (ctx.from.id.toString() !== ADMIN_ID) return;
+  if (ctx.from.id.toString() !== String(ADMIN_ID)) return;
   const { data: products } = await supabase.from('products').select('*');
   if (!products || products.length === 0) return ctx.reply("Mahsulotlar yo'q.");
 
   for (const p of products) {
-    const kb = new InlineKeyboard().text("🗑 O'CHIRISH", `del_${p.id}`);
-    await ctx.reply(`📦 ${p.name} - ${p.price}\n${p.description}`, { reply_markup: kb });
+    const kb = new InlineKeyboard()
+      .text("🖼 Rasmni almashtirish", `updimg_${p.id}`)
+      .text("🗑 O'CHIRISH", `del_${p.id}`);
+    await ctx.replyWithPhoto(p.image_url, {
+      caption: `📦 *${p.name}* — ${p.price}\n${p.description}`,
+      parse_mode: "Markdown",
+      reply_markup: kb
+    });
   }
 });
 
 bot.callbackQuery(/del_(.+)/, async (ctx) => {
-  // 🛡️ ADMIN TEKSHIRUVI
   if (!isAdmin(ctx)) {
     await ctx.answerCallbackQuery({ text: "⛔ Siz admin emassiz!", show_alert: true });
     return;
   }
   const id = ctx.match[1];
   await supabase.from('products').delete().eq('id', id);
-  await ctx.editMessageText("🗑 Mahsulot o'chirildi.");
+  await ctx.editMessageCaption("🗑 Mahsulot o'chirildi.");
+  await ctx.answerCallbackQuery("O'chirildi!");
 });
 
 /**
@@ -151,7 +261,6 @@ supabase
           });
         } catch (photoError) {
           console.error("📸 Rasm yuklashda xato, matn yuborilmoqda:", photoError.message);
-          // Rasm ishlamasa, hech bo'lmasa matnni va rasm ssilkasini yuboramiz
           await bot.api.sendMessage(ADMIN_ID, messageText + `\n🔗 Rasm linki: ${order.photo_url}`, { reply_markup: keyboard });
         }
       } else {
@@ -164,7 +273,6 @@ supabase
   .subscribe();
 
 bot.callbackQuery(/approve_(.+)/, async (ctx) => {
-    // 🛡️ ADMIN TEKSHIRUVI
     if (!isAdmin(ctx)) {
       await ctx.answerCallbackQuery({ text: "⛔ Siz admin emassiz!", show_alert: true });
       return;
@@ -175,7 +283,6 @@ bot.callbackQuery(/approve_(.+)/, async (ctx) => {
 });
 
 bot.callbackQuery(/reject_(.+)/, async (ctx) => {
-    // 🛡️ ADMIN TEKSHIRUVI
     if (!isAdmin(ctx)) {
       await ctx.answerCallbackQuery({ text: "⛔ Siz admin emassiz!", show_alert: true });
       return;
