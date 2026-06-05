@@ -197,7 +197,7 @@ function App() {
               <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               
               <div className="w-24 h-24 rounded-2xl bg-slate-800/80 border border-white/5 overflow-hidden flex-shrink-0 relative shadow-inner">
-                <img src={product.image_url} alt={product.name} className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700" />
+                <img src={product.name === 'Zori' ? 'https://images.unsplash.com/photo-1541701494587-cb58502866ab?q=80&w=1000' : product.name === 'Bnb' ? 'https://images.unsplash.com/photo-1502082553048-f009c37129b9?q=80&w=1000' : product.image_url} alt={product.name} className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700" />
                 <div className="absolute inset-0 bg-black/10 transition-all group-hover:bg-transparent" />
               </div>
 
